@@ -1,5 +1,8 @@
 #include "sim_defs.h"
 #include "altair_defs.h"
+#include <stdbool.h>
+#include <stdint.h>
+#include "api/mos2/system/terminal.h"
 
 /* обязательные глобалы SIMH */
 int32 sim_interval = 0;
@@ -24,10 +27,6 @@ static void sim_reset_all(void)
     }
 }
 
-t_stat sim_process_event(void)
-{
-    return SCPE_OK;
-}
 
 /* timing / idle */
 t_bool sim_idle (uint32 tmr, int sin_cyc) {
@@ -39,6 +38,7 @@ uint32 sim_os_msec(void) { return 0; }
 
 t_stat sim_putchar (int32 c)
 {
+    // putchar в MOS2 — putc(c, stdout()) через syscall-таблицу, работает корректно
     putchar((unsigned char)c);
     return SCPE_OK;
 }
@@ -180,20 +180,55 @@ return SCPE_OK;
 }
 
 int32 sim_int_char = 005;   // ^E
+
+/* Неблокирующий опрос клавиатуры через нативный MOS2 API.
+   getch_now() возвращает 0 если символа нет, иначе символ.
+   SCPE_KFLAG сигнализирует sio_svc что символ доступен. */
 t_stat sim_poll_kbd (void) {
-    // TODO: signals? SCPE_STOP, SCPE_BREAK
-    // SCPE_KFLAG | ch
+    char c = getch_now();
+    if (c == 0)
+        return SCPE_OK;            /* нет символа */
+    if (c == sim_int_char)
+        return SCPE_STOP;          /* ^E — прерывание эмулятора */
+    return SCPE_KFLAG | (c & 0xFF);
+}
+
+/* sim_process_event вызывается из CPU-цикла каждые ~KBD_POLL_WAIT инструкций.
+   Здесь мы вручную опрашиваем клавиатуру и кладём символ в SIO-буфер,
+   т.к. sim_activate/sim_cancel — заглушки и sio_svc сам себя не вызывает. */
+extern t_stat sio_svc(UNIT *uptr);
+extern UNIT sio_unit;
+
+t_stat sim_process_event(void)
+{
+    sio_svc(&sio_unit);   /* опрос клавиатуры → заполняет sio_unit.buf/u3 */
+    sim_interval = KBD_POLL_WAIT;
     return SCPE_OK;
 }
 
-int main(void)
+extern UNIT dsk_unit[];
+
+int main(int argc, char** argv)
 {
+    if (argc < 2) {
+        printf("ERROR: disk image is not defined\n");
+        return -1;
+    }
     sim_reset_all();   /* power-on reset Altair */
+    // Подключаем образ дискеты с SD-карты
+    dsk_unit[0].fileref = fopen(argv[1], "r+b");
+    if (!dsk_unit[0].fileref) {
+        printf("ERROR: disk image %s not found\n", argv[1]);
+        return 1;
+    }
+    dsk_unit[0].flags |= UNIT_ATT;  // помечаем как подключённый
+
+
+    sim_interval = KBD_POLL_WAIT;
 
     while (1) {
         t_stat r = sim_instr();
-        if (r != SCPE_OK)
-            break;
+        if (r != SCPE_OK) break;
     }
 
     return 0;

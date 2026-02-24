@@ -171,6 +171,8 @@ inline static char* concat(const char* s1, const char* s2) {
     return ((fn_ptr_t)_sys_table_ptrs[129])(s1, s2);
 }
 
+#include <stdlib.h> // for malloc
+
 inline static char *strdup(const char *s)
 {
     size_t n = strlen(s) + 1;

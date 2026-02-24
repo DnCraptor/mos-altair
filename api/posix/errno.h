@@ -14,6 +14,7 @@ extern "C" {
 #define ENOEXEC          8
 #define EBADF     9   /* Bad file descriptor */
 #define ECHILD          10
+#define	EAGAIN    11  /* No more processes */
 #define ENOMEM    12  /* Not enough memory */
 #define EACCES    13  /* Permission denied */
 #define EFAULT    14  /* Bad address: pointer points outside accessible memory */
@@ -27,6 +28,7 @@ extern "C" {
 #define EMFILE    24  /* Too many open files per process */
 #define ENOSPC    28  /* No space left on device */
 #define ESPIPE    29  /* Illegal seek */
+#define EPIPE     32  /* Broken pipe */
 #define ERANGE    34
 #define ENAMETOOLONG    36
 #define ENOSYS          38

@@ -22,6 +22,8 @@ static const unsigned long * const _sys_table_ptrs = (const unsigned long * cons
 #define AT_FDCWD (-100)
 #endif
 
+#include <sys/types.h>
+
 #define STDIN_FILENO  0
 #define STDOUT_FILENO 1
 #define STDERR_FILENO 2
@@ -352,12 +354,6 @@ int tcsetpgrp(int fd, pid_t pgrp) {
     return ((fn_ptr_t)_sys_table_ptrs[395])(fd, pgrp);
 }
 
-inline static
-int ftruncate(int fd, off_t length) {
-    /// TODO:
-    return 0;
-}
-
 #define F_OK 0
 #define R_OK 4
 #define W_OK 2
@@ -369,11 +365,32 @@ int access(const char *pathname, int mode) {
     return ((fn_ptr_t)_sys_table_ptrs[398])(pathname, mode);
 }
 
+
 inline static
 char* getcwd(char *buf, size_t size) {
     typedef char* (*fn_ptr_t)(char*, size_t);
     return ((fn_ptr_t)_sys_table_ptrs[403])(buf, size);
 }
+
+inline static
+int usleep(useconds_t usec) {
+    typedef void (*vTaskDelay_ptr_t)(unsigned long);
+    unsigned long ticks = usec / 1000;
+    if (ticks == 0) ticks = 1;
+    ((vTaskDelay_ptr_t)_sys_table_ptrs[2])( ticks );
+    return 0;
+}
+
+inline static
+int pipe2(int pipefd[2], int flags) {
+    typedef int (*fn_ptr_t)(int[2], int);
+    return ((fn_ptr_t)_sys_table_ptrs[404])(pipefd, flags);
+}
+
+inline static
+int pipe(int pipefd[2]) { return pipe2(pipefd, 0); }
+
+// TODO: ftruncate
 
 #ifdef __cplusplus
 }

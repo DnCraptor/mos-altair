@@ -773,7 +773,7 @@ return (InterlockedCompareExchange ((LONG volatile *) ptr, newv, oldv) == oldv);
 #include <unistd.h>
 int sim_set_fsize (FILE *fptr, t_addr size)
 {
-return ftruncate(fileno(fptr), (off_t)size);
+return -1; // TODO: ftruncate(fileno(fptr), (off_t)size);
 }
 
 #include <sys/stat.h>
